@@ -1,0 +1,49 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                Int                @id @default(autoincrement())
+  name              String
+  email             String             @unique
+  password          String
+  role              String             @default("USER")
+  isVerified        Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  files             File[]
+  verificationCodes VerificationCode[]
+  AuditLog          AuditLog[]
+}
+
+model File {
+  id        Int      @id @default(autoincrement())
+  name      String
+  path      String
+  userId    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  isDeleted Boolean  @default(false)
+}
+
+model VerificationCode {
+  id        Int      @id @default(autoincrement())
+  code      String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  action    String
+  fileName  String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
