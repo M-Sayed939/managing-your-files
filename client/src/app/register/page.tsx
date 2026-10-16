@@ -20,7 +20,8 @@ export default function RegisterPage() {
             toast.success('Account created! Check your email for OTP.');
             router.push(`/verify-email?email=${formData.email}`);
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Registration failed');
+            const errorMessage = error.response?.data?.message || "Registration failed";
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
