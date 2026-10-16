@@ -18,6 +18,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 export const register = async (req: Request, res: Response) => {
     try {
         const { name, email, password } = req.body;
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({
+                message: "Password must contain at least 8 characters, one uppercase, one lowercase, one number, and one special character (@$!%*?&)"
+            });
+        }
 
         if (!name || !email || !password) {
             return res.status(400).json({ error: 'All fields (name, email, password) are required' });
