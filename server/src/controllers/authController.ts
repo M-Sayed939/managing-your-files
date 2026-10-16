@@ -51,7 +51,7 @@ export const register = async (req: Request, res: Response) => {
         });
 
         // 1. هنطبع الكود في الكونسول عشان لو الإيميل اتأخر تاخده منه وتكمل
-        console.log(`\n🚀 [DEV] OTP CODE FOR ${email} IS: ${otp} \n`);
+        console.log(`\n OTP CODE FOR ${email} IS: ${otp} \n`);
 
         // 2. هنبعت الإيميل في الخلفية بدون await عشان السيرفر ميعلقش
         sendEmail(email, 'Verify Your Email', `Your verification code is: ${otp}`)
