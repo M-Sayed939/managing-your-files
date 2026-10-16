@@ -7,7 +7,6 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { sendEmail } from '../utils/email';
 
-
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
@@ -18,7 +17,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 export const register = async (req: Request, res: Response) => {
     try {
         const { name, email, password } = req.body;
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!\%*?&]{8,}$/;
         if (!passwordRegex.test(password)) {
             return res.status(400).json({
                 message: "Password must contain at least 8 characters, one uppercase, one lowercase, one number, and one special character (@$!%*?&)"
@@ -41,17 +41,31 @@ export const register = async (req: Request, res: Response) => {
         const newUser = await prisma.user.create({ data: { name, email, password: hashedPassword } });
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
         await prisma.verificationCode.create({
-            data: { code: otp, userId: newUser.id, expiresAt: new Date(Date.now() + 15 * 60 * 1000) }
+            data: {
+                code: otp,
+                userId: newUser.id,
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000) // صلحنا السطر ده (15 دقيقة)
+            }
         });
 
-        await sendEmail(email, 'Verify Your Email', `Your verification code is: ${otp}`);
-        res.status(201).json({ message: 'User registered. Please check your email for the OTP.' });
+        // 1. هنطبع الكود في الكونسول عشان لو الإيميل اتأخر تاخده منه وتكمل
+        console.log(`\n🚀 [DEV] OTP CODE FOR ${email} IS: ${otp} \n`);
+
+        // 2. هنبعت الإيميل في الخلفية بدون await عشان السيرفر ميعلقش
+        sendEmail(email, 'Verify Your Email', `Your verification code is: ${otp}`)
+            .catch(err => console.log("Background email error:", err.message));
+
+        // 3. نرد فوراً على الفرونت إند
+        return res.status(201).json({ message: 'User registered. Please check your email for the OTP.' });
+
     } catch (error) {
         console.error("Registration Error: ", error);
         res.status(500).json({ error: 'Registration error' });
     }
 };
+
 export const verifyEmail = async (req: Request, res: Response) => {
     try {
         const { email, code } = req.body;
@@ -74,6 +88,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Verification error' });
     }
 };
+
 export const resendCode = async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
@@ -85,15 +100,24 @@ export const resendCode = async (req: Request, res: Response) => {
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         await prisma.verificationCode.create({
-            data: { code: otp, userId: user.id, expiresAt: new Date(Date.now() + 15 * 60 * 1000) }
+            data: {
+                code: otp,
+                userId: user.id,
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+            }
         });
 
-        await sendEmail(email, 'Your New Verification Code', `Your new code is: ${otp}`);
-        res.status(200).json({ message: 'Code resent successfully' });
+        console.log(`\n NEW OTP CODE FOR ${email} IS: ${otp} \n`);
+
+        sendEmail(email, 'Your New Verification Code', `Your new code is: ${otp}`)
+            .catch(err => console.log("Background email error:", err.message));
+
+        return res.status(200).json({ message: 'Code resent successfully' });
     } catch (error) {
         res.status(500).json({ error: 'Error resending code' });
     }
 };
+
 export const getProfile = async (req: Request, res: Response) => {
     try {
         const userId = req.user.userId;
@@ -116,7 +140,6 @@ export const getProfile = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Error fetching profile' });
     }
 };
-
 
 export const login = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -144,5 +167,4 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     } catch (error) {
         res.status(500).json({ error: 'Server error during login' });
     }
-
 };
